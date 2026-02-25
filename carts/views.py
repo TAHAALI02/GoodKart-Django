@@ -1,4 +1,4 @@
-from django.shortcuts import render,redirect,HttpResponse
+from django.shortcuts import render,redirect,HttpResponse,get_object_or_404
 from store.models import product as Product
 from .models import cart as Cart,cart_item as CartItem
 # Create your views here.
@@ -36,6 +36,32 @@ def add_cart(request,product_id):
     return redirect('cart')
 
 
+def remove_cart(request, product_id):
+    try:
+        carts = Cart.objects.get(cart_id=_cart_id(request))
+        product = get_object_or_404(Product, id=product_id)
+        cart_item = CartItem.objects.get(product=product, cart=carts)
+
+        if cart_item.quantity > 1:
+            cart_item.quantity -= 1
+            cart_item.save()
+        else:
+            cart_item.delete()
+
+    except (Cart.DoesNotExist, CartItem.DoesNotExist):
+        pass
+
+    return redirect('cart')
+
+def remove_cart_item(request, product_id):
+    try:
+        cart = Cart.objects.get(cart_id=_cart_id(request))
+        product = get_object_or_404(Product, id=product_id)
+        cart_item = CartItem.objects.get(cart=cart,product=product)
+        cart_item.delete()
+    except (Cart.DoesNotExist, CartItem.DoesNotExist):
+        pass
+    return redirect('cart')
 
 def cart(request,total=0,quantity=0,cart_item=None):
     try:
@@ -44,11 +70,15 @@ def cart(request,total=0,quantity=0,cart_item=None):
         for item in cart_items:
             total += (item.product.price * item.quantity)
             quantity += item.quantity
+        tax = (total*5)/100
+        grand_total = total + tax
     except Cart.DoesNotExist:
         pass
     context = {
         'total': total,
         'quantity': quantity,
         'cart_items': cart_items,
+        'grand_total': grand_total,
+        'tax': tax
     }
     return render(request,'store/cart.html',context)
