@@ -22,9 +22,15 @@ from django.conf.urls.static import static
 from great_kart import settings
 from . import views as home
 
+# # for perfoemance checking
+# from django.conf import settings
+# from django.urls import include, path
+
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # path('__debug__/', include('debug_toolbar.urls')),
     path('', home.home, name='home'),
     path('store/',include('store.urls')),
     path('category/',include('category.urls')),
