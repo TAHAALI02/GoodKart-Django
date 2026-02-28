@@ -34,7 +34,13 @@
 			<div class="aside"><img src="{{ item.product.image.url }}" class="img-sm"></div>
 			<figcaption class="info">
 				<a href="{{ item.product.get_url }}" class="title text-dark">{{ item.product.product_name }}</a>
-				<p class="text-muted small">Color: 25 Mpx <br> Size: Canon</p>
+				<p class="text-muted small">
+					{% if item.variation.all %}
+    					{% for i in item.variation.all %}
+							{{ i.variation_name | capfirst }} : {{ i.variation_value | capfirst }}<br>
+						{% endfor %}
+					{% endif %}
+				</p>
 			</figcaption>
 		</figure>
 	</td>
