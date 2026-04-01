@@ -17,8 +17,8 @@ from django.utils.encoding import force_bytes
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import EmailMessage
 
-from django.views.decorators.csrf import csrf_exempt
-@csrf_exempt
+# from django.views.decorators.csrf import csrf_exempt
+# @csrf_exempt
 def register(request):
     if request.method == 'POST':
         form = RegistrationForm(request.POST)
@@ -106,8 +106,8 @@ def login(request):
 
         if user is not None:
             auth.login(request, user)
-            # messages.success(request, "You are logged in successfully.")
-            return redirect('home')
+            messages.success(request, "You are logged in successfully.")
+            return redirect('dashboard')
         else:
             messages.error(request, "Invalid login credentials")
             return redirect('login')
@@ -119,3 +119,69 @@ def logout(request):
     auth.logout(request)
     messages.success(request,"You are logged out.")
     return redirect('login')
+
+
+@login_required(login_url='login')
+def dashboard(request):
+    return render(request,'accounts/dashboard.html')
+
+def forgotPassword(request):
+    if request.method == 'POST':
+        email = request.POST['email']
+        if Account.objects.filter(email=email).exists():
+            user = Account.objects.get(email__exact=email)
+
+            # user activation
+            current_site = get_current_site(request)
+            mail_subject = "Reseet Your Password "
+            message = render_to_string('accounts/reset_password_email.html',{
+                'user':user,
+                'domain':current_site,
+                'uid':urlsafe_base64_encode(force_bytes(user.pk)),
+                'token':default_token_generator.make_token(user),
+            })
+            to_email = email
+            send_email = EmailMessage(mail_subject,message,to=[to_email])
+            send_email.content_subtype = "html"
+            send_email.send()
+
+            messages.success(request,'Password email has to be sent on Your Email Address')
+            return redirect('login')
+        else:
+            messages.error(request,'Accounts Does not exists')
+    return render(request,'accounts/forgotPassword.html')
+
+def reset(request, uidb64, token):
+    try:
+        # Decode the user ID
+        uid = urlsafe_base64_decode(uidb64).decode()
+        user = get_user_model().objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, get_user_model().DoesNotExist):
+        user = None
+
+    if user is not None and default_token_generator.check_token(user, token):
+        request.session['uid'] = uid
+        messages.success(request,'Please reset your password')
+        return redirect('reset_password')
+    else:
+        messages.error(request,'This is expired')
+
+def reset_password(request):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+
+        if password == confirm_password:
+            uid = request.session.get('uid')
+            user = Account.objects.get(pk=uid)
+            user.set_password(password)
+            user.save()
+            messages.success(request,'Password Reset Successfully')
+            return redirect('login')
+        
+        else:
+            messages.error(request,'Both password must be same !')
+            return redirect('reset_password')
+
+    else:
+        return render(request, 'accounts/reset_password.html')
